@@ -4,6 +4,31 @@
 # - Install ovftool on the Proxmox host - https://developer.vmware.com/web/tool/ovf/
 # - Hardcode the variables for your ESXi IP, user, etc.
 
+# Checks for the availability of the passed in commands,
+# exits with a message if at least one is not available.
+function require() {
+    local missing=()
+
+    for command in "$@"; do
+        if ! type "$command" &> /dev/null; then
+            missing+=("$command")
+        fi
+    done
+
+    if [[ "${#missing[@]}" -gt 0 ]]; then
+        echo "Error: The following commands that are required to run this script are not in PATH:"
+
+        for command in "${missing[@]}"; do
+            echo "- $command"
+        done
+
+        echo "Please install them and try again."
+        exit 1
+    fi
+}
+
+require jq ovftool qm ssh sshpass tar virt-customize
+
 # Gets user input, returns the default value if no input was provided.
 # Doesn't prompt if the variable is already set.
 # Accepts a validation regex too.
@@ -32,36 +57,12 @@ function input() {
     fi
 }
 
-# Checks for the availability of the passed in commands,
-# exits with a message if at least one is not available.
-function require() {
-    local missing=()
-
-    for command in "$@"; do
-        if ! type "$command" &> /dev/null; then
-            missing+=("$command")
-        fi
-    done
-
-    if [[ "${#missing[@]}" -gt 0 ]]; then
-        echo "Error: The following commands that are required to run this script are not in PATH:"
-
-        for command in "${missing[@]}"; do
-            echo "- $command"
-        done
-
-        echo "Please install them and try again."
-        exit 1
-    fi
-}
-
-require qm ovftool jq virt-customize
-
 input ESXI_SERVER "ESXi server hostname/IP"
 input ESXI_USERNAME "ESXi server username"
 input ESXI_PASSWORD "ESXi server password"
 
 input VM_NAME "Name of the VM to migrate"
+input VM_IS_WINDOWS "Whether if the VM is Windows" "n" "^y|n$"
 input VLAN_TAG "VLAN tag" "80"
 
 while [[ true ]]; do
@@ -143,12 +144,14 @@ function create-proxmox-vm() {
     echo "Converted .vmdk file to raw format!"
 
     # Install qemu-guest-agent using virt-customize
-    echo "Installing qemu-guest-agent using virt-customize..."
-    virt-customize -a "$raw_path" --install qemu-guest-agent || {
-        echo "Failed to install qemu-guest-agent."
-        exit 1
-    }
-    echo "Installed qemu-guest-agent used virt-customize!"
+    if [[ "$VM_IS_WINDOWS" == "n" ]]; then
+        echo "Installing qemu-guest-agent using virt-customize..."
+        virt-customize -a "$raw_path" --install qemu-guest-agent || {
+            echo "Failed to install qemu-guest-agent."
+            exit 1
+        }
+        echo "Installed qemu-guest-agent used virt-customize!"
+    fi
 
     FIRMWARE_TYPE=$(get-firmware-type)
 
