@@ -61,7 +61,7 @@ input ESXI_SERVER "ESXi server hostname/IP"
 input ESXI_USERNAME "ESXi server username"
 input ESXI_PASSWORD "ESXi server password"
 
-input VM_NAME "Same of the VM to migrate"
+input VM_NAME "Name of the VM to migrate"
 input VLAN_TAG "VLAN tag" "80"
 
 while [[ true ]]; do
