@@ -213,7 +213,7 @@ function add-efi-disk-to-vm() {
 # === Main Process ===
 export-vmware-vm
 create-proxmox-vm
-cleanup-migration-directory
+clean-migration-directory
 
 if [ "$FIRMWARE_TYPE" == "uefi" ]; then # FIRMWARE_TYPE was set in create-proxmox-vm
     add-efi-disk-to-vm
